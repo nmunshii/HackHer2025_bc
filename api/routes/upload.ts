@@ -15,13 +15,6 @@ interface MulterRequest extends Request {
   file?: Express.Multer.File;
 }
 
-// Connect to the Ethereum network and the contract
-const provider = new ethers.JsonRpcProvider("http://localhost:8545"); // Adjust the provider URL
-const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your deployed contract address
-const contractABI = [ /* ABI from compiled contract */ ]; // Replace with your contract's ABI
-const signer = await provider.getSigner();
-const contract = new ethers.Contract(contractAddress, contractABI, signer);
-
 // POST /upload endpoint that accepts an image file named "image"
 router.post("/upload", upload.single("image"), async (req: MulterRequest, res: Response): Promise<void> => {
   try {
@@ -30,6 +23,13 @@ router.post("/upload", upload.single("image"), async (req: MulterRequest, res: R
       res.status(400).json({ message: "No image uploaded" });
       return; // Ensure to return after sending a response
     }
+
+    // Connect to the Ethereum network and the contract
+    const provider = new ethers.JsonRpcProvider("http://localhost:8545"); // Adjust the provider URL
+    const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your deployed contract address
+    const contractABI: any = [ /* ABI from compiled contract */ ]; // Replace with your contract's ABI
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
     const { buffer, mimetype, originalname } = req.file;
 
