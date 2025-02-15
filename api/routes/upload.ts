@@ -3,6 +3,7 @@ import multer from "multer";
 import sharp from "sharp";
 import { createHash } from "crypto";
 import Image from "../models/Image";  // Adjust the path as needed
+import { ethers } from "ethers"; // Correct import
 
 const router = express.Router();
 
@@ -13,6 +14,13 @@ const upload = multer({ storage: multer.memoryStorage() });
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
 }
+
+// Connect to the Ethereum network and the contract
+const provider = new ethers.JsonRpcProvider("http://localhost:8545"); // Adjust the provider URL
+const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your deployed contract address
+const contractABI = [ /* ABI from compiled contract */ ]; // Replace with your contract's ABI
+const signer = await provider.getSigner();
+const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
 // POST /upload endpoint that accepts an image file named "image"
 router.post("/upload", upload.single("image"), async (req: MulterRequest, res: Response): Promise<void> => {
@@ -43,6 +51,10 @@ router.post("/upload", upload.single("image"), async (req: MulterRequest, res: R
 
     // Save the new image to MongoDB
     await newImage.save();
+
+    // Store image metadata in the blockchain
+    const tx = await contract.storeImage(originalname, mimetype, metadata.width, metadata.height, hash);
+    await tx.wait(); // Wait for the transaction to be mined
 
     res.status(201).json({ message: "Image uploaded successfully!", imageId: newImage._id });
   } catch (error) {
