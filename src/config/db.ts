@@ -1,39 +1,30 @@
-import { ContractInterface, ethers } from "ethers";
+import { ethers } from "hardhat";
 
-// Blockchain initialization
-const provider = new ethers.JsonRpcProvider("http://localhost:8545");
-const contractAddress = "YOUR_CONTRACT_ADDRESS";
-const contractABI: ContractInterface[] = [{
-    "inputs": [],
-    "name": "myVariable",
-    "outputs": [
-        {
-            "name": "",
-            "type": "uint256"
-        }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-},
-{
-    "constant": false,
-    "inputs": [
-        {
-            "name": "_value",
-            "type": "uint256"
-        }
-    ],
-    "name": "setMyVariable",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-}];
+const contractABI: string[] = [
+    "function getImageByHash(string memory _hash,string[] memory hashes) public view returns (Image memory)",
+    "function storeImage(string memory _name, string memory _contentType, uint256 _width, uint256 _height, string memory _hash) public returns (uint256)",
+    "function getImage(uint256 _id) public view returns (Image memory)",
+    "function getImageById(uint256 _id) public view returns (Image memory)"
+];
 
-// Initialize contract and export for routes to use
 export const initializeContract = async () => {
-    const signer = await provider.getSigner();
-    return new ethers.Contract(contractAddress, contractABI, signer);
+    try {
+        // Get the first signer from Hardhat
+        const [signer] = await ethers.getSigners();
+        const ImageStorage = await ethers.getContractFactory("ImageStorage");
+        const imageStorage = await ImageStorage.deploy();
+        // Get the deployed contract instance
+        const contract = await ethers.getContractAt(
+            "ImageStorage", // Replace with your actual contract name
+            await imageStorage.getAddress() || "", // Get contract address from environment variable
+            signer
+        );
+
+        return contract;
+    } catch (error) {
+        console.error("Failed to initialize contract:", error);
+        throw new Error("Contract initialization failed: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
 };
 
-export default provider;
+export const provider = ethers.provider;

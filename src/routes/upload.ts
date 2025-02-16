@@ -2,8 +2,9 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import sharp from "sharp";
 import { createHash } from "crypto";
-import Image from "../models/Image";  // Adjust the path as needed
-import { ethers } from "ethers"; // Correct import
+import { ethers } from "hardhat"; // Correct import
+import { initializeContract } from "../config/db";
+import axios from "axios";
 
 const router = express.Router();
 
@@ -25,41 +26,83 @@ router.post("/upload", upload.single("image"), async (req: MulterRequest, res: R
     }
 
     // Connect to the Ethereum network and the contract
-    const provider = new ethers.JsonRpcProvider("http://localhost:8545"); // Adjust the provider URL
-    const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your deployed contract address
-    const contractABI: any = [ /* ABI from compiled contract */ ]; // Replace with your contract's ABI
-    const signer = await provider.getSigner();
-    const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-    const { buffer, mimetype, originalname } = req.file;
+    const contract = await initializeContract();
 
-    // Use Sharp to extract metadata from the image
+    const { buffer } = req.file;
+
     const metadata = await sharp(buffer).metadata();
 
-    // Compute a SHA‑256 hash of the image buffer
-    const hash = createHash("sha256").update(buffer).digest("hex");
-
-    // Create a new Image document with the file data and metadata
-    const newImage = new Image({
-      data: buffer,
-      contentType: mimetype,
-      name: originalname,         // mapping originalname to the "name" field
-      width: metadata.width,
-      height: metadata.height,
-      hash: hash,
-    });
-
-    // Save the new image to MongoDB
-    await newImage.save();
+    if (metadata.comments) {
+      if (metadata.comments.find((comment) => comment.keyword === "FauxHash")) {
+        res.status(400).json({ message: "Image already uploaded" });
+        return; // Ensure to return after sending a response
+      }
+    }
 
     // Store image metadata in the blockchain
-    const tx = await contract.storeImage(originalname, mimetype, metadata.width, metadata.height, hash);
-    await tx.wait(); // Wait for the transaction to be mined
+    const tx = await contract.giveImageHash(buffer);
 
-    res.status(201).json({ message: "Image uploaded successfully!", imageId: newImage._id });
+    // Add tx as the value to the key-value pair with key "FauxHash" to metadata.comments
+    if (!metadata.comments) {
+      metadata.comments = [];
+    }
+    metadata.comments.push({ keyword: "FauxHash", text: tx });
+
+    const formData = new FormData();
+    const blob = new Blob([buffer], { type: "image/png" });
+    formData.append("image", blob, "image.png");
+    formData.append("metadata", JSON.stringify(metadata));
+
+    const response = await axios.post("/image/upload", formData, {
+      headers: {
+      "Content-Type": "multipart/form-data"
+      }
+    });
+
+    if (response.status !== 200) {
+      res.status(500).json({ message: "Error uploading image to IPFS" });
+      return; // Ensure to return after sending a response
+    }
+
+    // Generate the transaction hash
+
+    res.status(200).json({ message: "Image uploaded successfully!", hash: tx });
   } catch (error) {
     res.status(500).json({ message: "Error uploading image", error });
   }
 });
 
-export default router; 
+
+router.get("/verify", async (req: Request, res: Response) => {
+  try {
+    const { hash } = req.query;
+
+    if (!hash) {
+      res.status(400).json({ message: "No hash provided" });
+      return; // Ensure to return after sending a response
+    }
+
+    const contract = await initializeContract();
+
+    const allHashes = await axios.get("/image/allHashes");
+
+    if (!allHashes.data) {
+      res.status(500).json({ message: "Error fetching hashes from db" });
+      return; // Ensure to return after sending a response
+    }
+
+    const image = await contract.getImageByHash(hash.toString(), allHashes.data);
+
+    if (!image) {
+      res.status(404).json({ message: "Image not found" });
+      return; // Ensure to return after sending a response
+    }
+
+    res.status(200).json({ message: "Image verified successfully!" });
+  } catch (error) {
+    res.status(500).json({ message: "Error verifying image", error });
+  }
+});
+
+export default router;
