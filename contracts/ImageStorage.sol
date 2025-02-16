@@ -8,6 +8,7 @@ contract ImageStorage {
         uint width;
         uint height;
         string hash; // SHA-256 hash of the image
+        bytes data; // Raw image data (optional, can be omitted for large images)
         address owner; // Address of the image owner
     }
 
