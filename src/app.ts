@@ -3,13 +3,23 @@ import uploadRouter from "./routes/upload";
 import { initializeContract } from "./config/db";
 import axios from "axios";
 import dotenv from "dotenv";
+import bodyParser from "body-parser";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PATCH", "DELETE"]
+}));
+app.options("*", cors());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
+const PORT = process.env.PORT || 3010;
 
-axios.defaults.baseURL = process.env.DB_URL || "http://localhost:3000";
+axios.defaults.baseURL = process.env.DB_URL || "http://localhost:3010";
 
 // Initialize app
 async function initializeApp() {
