@@ -6,6 +6,7 @@ import { ethers } from "hardhat"; // Correct import
 import { initializeContract } from "../config/db";
 import axios from "axios";
 import FormData from "form-data";
+import { couldStartTrivia } from "typescript";
 
 const router = express.Router();
 
@@ -29,6 +30,8 @@ router.get("/", (req: Request, res: Response) => {
 
 // POST /upload endpoint that accepts an image file named "image"
 router.post("/upload", upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  const email = req.headers['email'];
+
   try {
     // Check if a file was provided
     if (!req.file) {
@@ -53,20 +56,11 @@ router.post("/upload", upload.single('file'), async (req: Request, res: Response
     // Store image metadata in the blockchain
     const tx = await contract.giveImageHash(buffer);
 
-    // Add tx as the value to the key-value pair with key "FauxHash" to metadata.comments
-    if (!metadata.comments) {
-      metadata.comments = [];
-    }
-    metadata.comments.push({ keyword: "FauxHash", text: tx });
-    const formData = new FormData();
-    formData.append("image", buffer, { filename: "image.png", contentType: "image/png" });
-    formData.append("metadata", JSON.stringify(metadata));
-
-    const response = await axios.post("http://127.0.0.1:4000/image/upload", formData, {
-      headers: {
-      "Content-Type": "multipart/form-data"
-      }
-    }).catch(error => {
+    const response = await axios.post("http://127.0.0.1:4000/image/upload", 
+        {
+          tx,
+          email
+        }).catch(error => {
       if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
@@ -95,7 +89,7 @@ router.post("/upload", upload.single('file'), async (req: Request, res: Response
 
     res.status(200).json({ message: "Image uploaded successfully!", hash: tx });
   } catch (error) {
-    res.status(500).json({ message: "Error uploading image" });
+    res.status(500).json({ message: "Error uploading image", error });
   }
 });
 
