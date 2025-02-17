@@ -54,17 +54,10 @@ router.post("/upload", upload.single('file'), async (req: Request, res: Response
     const tx = await contract.giveImageHash(buffer);
 
     // Add tx as the value to the key-value pair with key "FauxHash" to metadata.comments
-    if (!metadata.comments) {
-      metadata.comments = [];
-    }
-    metadata.comments.push({ keyword: "FauxHash", text: tx });
-    const formData = new FormData();
-    formData.append("image", buffer, { filename: "image.png", contentType: "image/png" });
-    formData.append("metadata", JSON.stringify(metadata));
-
-    const response = await axios.post("http://127.0.0.1:4000/image/upload", formData, {
+  
+    const response = await axios.post("http://127.0.0.1:4000/image/upload", { tx }, {
       headers: {
-      "Content-Type": "multipart/form-data"
+      "Content-Type": "application/json"
       }
     }).catch(error => {
       if (error.response) {
