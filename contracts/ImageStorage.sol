@@ -28,9 +28,13 @@ contract ImageStorage {
         revert("Image not found");
     }
 
-    function giveImageHash(bytes memory data) public pure returns (string memory) {
+    function giveImageHash(bytes memory data) public returns (bytes32) {
         bytes32 hash = sha256(data);
-        return bytes32ToString(hash);
+        require(!hashExists[hash], "Hash already exists");
+        hashExists[hash] = true;
+        hashCount++;
+        emit HashStored(hash);
+        return hash;
     }
 
     function bytes32ToString(bytes32 _bytes32) internal pure returns (string memory) {
@@ -56,5 +60,45 @@ contract ImageStorage {
     // Function to get the total number of images stored
     function getImageCount() public view returns (uint256) {
         return imageCount;
+    }
+
+    // New Functions
+    // Mapping to store hashes
+    mapping(bytes32 => bool) private hashExists;
+    uint256 private hashCount;
+
+    // Event to emit when a new hash is stored
+    event HashStored(bytes32 indexed hash);
+
+    // Function to store a hash
+    function storeHash(bytes32 _hash) public {
+        require(!hashExists[_hash], "Hash already exists");
+        hashExists[_hash] = true;
+        hashCount++;
+        emit HashStored(_hash);
+    }
+
+    // Function to check if a hash exists
+    function checkHash(bytes32 _hash) public view returns (bool) {
+        return hashExists[_hash];
+    }
+
+
+
+    // Function to get the total number of hashes stored
+    function getHashCount() public view returns (uint256) {
+        return hashCount;
+    }
+
+    // Helper function to convert a string to bytes32
+    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 32))
+        }
     }
 }

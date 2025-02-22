@@ -56,11 +56,17 @@ router.post("/upload", upload.single('file'), async (req: Request, res: Response
     // Store image metadata in the blockchain
     const tx = await contract.giveImageHash(buffer);
 
+    // await contract.storeImage();
+
     const response = await axios.post("http://127.0.0.1:4000/image/upload", 
-        {
-          tx,
-          email
-        }).catch(error => {
+      {
+        file: req.file
+      }, 
+      {
+        headers: {
+        Authorization: `Bearer ${email}`
+        }
+      }).catch(error => {
       if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
@@ -89,7 +95,8 @@ router.post("/upload", upload.single('file'), async (req: Request, res: Response
 
     res.status(200).json({ message: "Image uploaded successfully!", hash: tx });
   } catch (error) {
-    res.status(500).json({ message: "Error uploading image", error });
+    console.error((error as any).message);
+    res.status(500).json({ message: "Error uploading image " + (error as any).message });
   }
 });
 

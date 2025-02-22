@@ -4,7 +4,13 @@ const contractABI: string[] = [
     "function getImageByHash(string memory _hash,string[] memory hashes) public view returns (Image memory)",
     "function storeImage(string memory _name, string memory _contentType, uint256 _width, uint256 _height, string memory _hash) public returns (uint256)",
     "function getImage(uint256 _id) public view returns (Image memory)",
-    "function getImageById(uint256 _id) public view returns (Image memory)"
+    "function getImageById(uint256 _id) public view returns (Image memory)",
+    "function checkHash(bytes32 _hash) public view returns (bool)",
+    "function checkHash(bytes32 _hash) public view returns (bool)",
+    "function getHashCount() public view returns (uint256)",
+    "function stringToBytes32(string memory source) public pure returns (bytes32 result)",
+    "function storeHash(bytes32 _hash) public"
+    
 ];
 
 export const initializeContract = async () => {
